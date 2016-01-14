@@ -4,7 +4,6 @@
 	<meta charset="UTF-8" />
     <title>Tiger Game Demo</title>
 	<script type="text/javascript" src="js/phaser.js"></script>
-    <script type="text/javascript" src="js/phaser-virtual-joystick.min.js"></script>
     <style type="text/css">
         body {
             margin: 0;
@@ -32,8 +31,8 @@ function preload() {
     game.load.spritesheet('tiger', 'assets/tigerSS.png', 46, 39);
     game.load.image('platform', 'assets/grass-platform.png');
     game.load.image('ice-platform', 'assets/frost-platform.png');
-    game.load.image('nutricomp-logo', 'assets/nutribaby-logo.png');
-    game.load.image('softtek-logo', 'assets/softtek-logo.png');
+    game.load.image('nutricompKill', 'assets/nutricompKill.png');
+
 
 }
 
@@ -48,8 +47,6 @@ var jumpTimer = 0;
 var nutricomps;
 var score = 0;
 var scoreText;
-var nutribabyLogo;
-var softtekLogo;
 
 function create() {
 
@@ -109,7 +106,7 @@ function create() {
         //  Set a random speed between 50 and 150
         //movingPlatform.body.velocity.x = game.rnd.integerInRange(50, 150);
         //  Increase Speed gradually
-        movingPlatform.body.velocity.x = game.rnd.integerInRange(450, 600) - (10 * i)
+        movingPlatform.body.velocity.x = 500 - (10 * i)
 
         //  Inverse it?
         if (Math.random() > 0.5)
@@ -153,20 +150,10 @@ function create() {
 
     //loop de Generacion de nutricomp
     //game.time.events.repeat(Phaser.Timer.SECOND * 1, 10, createNutriComp, this);
-    game.time.events.loop(Phaser.Timer.SECOND*5, createNutriComp, this);
+    game.time.events.loop(Phaser.Timer.SECOND*4, createNutriComp, this);
     
-    //Nutricomp Logo
-    nutribabyLogo = game.add.sprite(800-200, 600-64, 'nutricomp-logo');
-    //nutribabyLogo.scale.setTo(0.5,0.5);
-    nutribabyLogo.fixedToCamera = true;
-
-    //Softtek Logo
-    softtekLogo = game.add.sprite(0, 600-64, 'softtek-logo');
-    //softtekLogo.scale.setTo(0.5,0.5);
-    softtekLogo.fixedToCamera = true;
-
     //  The score
-    scoreText = game.add.text(16, 16, 'Puntuacion: 0', { fontSize: '16px', fill: '#000' });
+    scoreText = game.add.text(16, 16, 'score: 0', { fontSize: '32px', fill: '#000' });
     scoreText.fixedToCamera = true;
 
     //Follow¨Player
@@ -238,7 +225,7 @@ function update() {
     if (cursors.left.isDown)
     {
         //  Move to the left
-        player.body.velocity.x = -200;
+        player.body.velocity.x = -150;
         if (facing !== 'left')
         {
             facing = 'left';
@@ -248,7 +235,7 @@ function update() {
     else if (cursors.right.isDown)
     {
         //  Move to the right
-        player.body.velocity.x = 200;
+        player.body.velocity.x = 150;
         if (facing !== 'right')
         {
             facing = 'right';
@@ -304,7 +291,7 @@ function collectnutricomp (player, nutricomp) {
 
     //  Add and update the score
     score += 10;
-    scoreText.text = 'Puntuacion: ' + score;
+    scoreText.text = 'Score: ' + score;
 
 }
 
@@ -349,6 +336,8 @@ function createNutriComp() {
     }
 
 }
+
+
 
 function render() {
 
