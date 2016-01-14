@@ -15,9 +15,17 @@
 
 <script type="text/javascript">
 
-var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update, render: render });
+var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { init: init, preload: preload, create: create, update: update, render: render });
 
 var facing = "right";
+
+function init(){
+    game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+
+    game.scale.pageAlignHorizontally = true;
+    game.scale.pageAlignVertically = true;
+    
+}
 
 function preload() {
 
