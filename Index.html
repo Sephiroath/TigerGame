@@ -424,6 +424,7 @@ function killPlayer(){
     gameOverBool = true;
     if(score === undefined){maxScore = 0;}
     if(score > maxScore){maxScore = score;}
+    score = 0;
     maxScoreText.text = "Puntuacion maxima: " + maxScore
     //game.state.restart();
 }
