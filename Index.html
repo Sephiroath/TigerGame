@@ -18,6 +18,7 @@
 var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { init: init, preload: preload, create: create, update: update, render: render });
 
 var facing = "right";
+var maxScore = 0;
 
 function init(){
     game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
@@ -42,6 +43,7 @@ function preload() {
     game.load.image('ice-platform', 'assets/frost-platform.png');
     game.load.image('nutricomp-logo', 'assets/nutribaby-logo.png');
     game.load.image('softtek-logo', 'assets/softtek-logo.png');
+    game.load.image('danger-line', 'assets/danger-line.png');
     //game.load.atlas('arcade', 'assets/virtualjoystick/skins/arcade-joystick.png', 'assets/virtualjoystick/skins/arcade-joystick.json');
     game.load.atlas('dpad', 'assets/virtualjoystick/skins/dpad.png', 'assets/virtualjoystick/skins/dpad.json');
 
@@ -56,8 +58,15 @@ var edgeTimer = 0;
 var jumpTimer = 0;
 
 var nutricomps;
+var dangerBar;
 var score = 0;
 var scoreText;
+var maxScoreText;
+var heightScore;
+var currentHeightText;
+var topHeight = 10000;
+var gameOverBool = false;
+
 var nutribabyLogo;
 var softtekLogo;
 var pad;
@@ -67,22 +76,24 @@ function create() {
 
     this.stage.backgroundColor = '#2f9acc';
 
+    this.spacebar = this.game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+
     //  Activacion de fisicas Arcade
     game.physics.startSystem(Phaser.Physics.ARCADE);
 
-    game.world.setBounds(0, 0, 800, 5000);
+    game.world.setBounds(0, 0, 800, 10000);
 
     //  primer Fondo del juego
     game.add.sprite(0, game.world.height-177, 'groundBackground');
 
     //Fondo sucesivo del cielo
-    for (var i = 1; i <= 50; i++) {
+    for (var i = 1; i <= 100; i++) {
         game.add.sprite(0, game.world.height-177-(106*i), 'skyBackground');
     };
     for (var i = 1; i <= 3; i++) {
         game.add.sprite(0, game.world.height-306-(1200*i), 'backgroundClouds');
     };
-    
+
     //  Grupo de plataformas iniciales a las cuales se puede saltar
     platforms = game.add.group();
 
@@ -111,7 +122,7 @@ function create() {
     var x = 0;
     var y = 64;
 
-    for (var i = 0; i < 44; i++)
+    for (var i = 0; i < 80; i++)
     {
         var type = i % 2 === 1 ? 'platform' : 'ice-platform';
         var movingPlatform = movingPlatforms.create(x, y, type);
@@ -121,7 +132,7 @@ function create() {
         //  Set a random speed between 50 and 150
         //movingPlatform.body.velocity.x = game.rnd.integerInRange(50, 150);
         //  Increase Speed gradually
-        movingPlatform.body.velocity.x = game.rnd.integerInRange(450, 600) - (10 * i)
+        movingPlatform.body.velocity.x = game.rnd.integerInRange(900, 1050) - (10 * i)
 
         //  Inverse it?
         if (Math.random() > 0.5)
@@ -136,7 +147,7 @@ function create() {
             x = 0;
         }
 
-        y+= 104;
+        y+= 120;
     }
 
     movingPlatforms.setAll('body.allowGravity', false);
@@ -166,6 +177,14 @@ function create() {
     //loop de Generacion de nutricomp
     //game.time.events.repeat(Phaser.Timer.SECOND * 1, 10, createNutriComp, this);
     game.time.events.loop(Phaser.Timer.SECOND*5, createNutriComp, this);
+
+    //Danger line: se añade linea que al pasarla mata al player
+    dangerBar = game.add.sprite(0, game.world.height, 'danger-line');
+    game.physics.arcade.enable(dangerBar);
+    dangerBar.body.velocity.y = -15;
+    dangerBar.body.allowGravity = false;
+    dangerBar.body.immovable = true;
+    game.time.events.loop(Phaser.Timer.SECOND*1, increaseDangerBarVelocity, this);;
     
     //Nutricomp Logo
     nutribabyLogo = game.add.sprite(800-200, 600-64, 'nutricomp-logo');
@@ -181,6 +200,18 @@ function create() {
     scoreText = game.add.text(16, 16, 'Puntuacion: 0', { fontSize: '16px', fill: '#000' });
     scoreText.fixedToCamera = true;
 
+    //Maximum Score
+    maxScoreText = game.add.text(16, 32, 'Puntuacion maxima: ' + maxScore, { fontSize: '16px', fill: '#000' });
+    maxScoreText.fixedToCamera = true;
+    
+    //current Height 
+    currentHeightText = game.add.text(16, 48, 'Altura actual: 0', { fontSize: '16px', fill: '#000' });
+    currentHeightText.fixedToCamera = true;
+
+    //Maximum Height
+    heightScore = game.add.text(16, 64, 'Altura maxima: 0', { fontSize: '16px', fill: '#000' });
+    heightScore.fixedToCamera = true;
+
     //Follow¨Player
     game.camera.follow(player);
 
@@ -195,6 +226,12 @@ function create() {
     stick.showOnTouch = true;
     //stick.alignBottomLeft(0);
     
+}
+
+function increaseDangerBarVelocity(){
+    if(!gameOverBool){
+        dangerBar.body.velocity.y -= 2;
+    }
 }
 
 function wrapPlatform(movingPlatform) {
@@ -235,8 +272,15 @@ function setFriction(player, movingPlatform) {
 function update() {
 
     movingPlatforms.forEach(wrapPlatform);
+    if (this.spacebar.isDown && gameOverBool){
+        gameOverBool = false;
+        game.state.restart();
+    }      
     // performance decrease
     //nutricomps.forEach(killOffscreenNutricomps);
+    
+    //Height Score
+    heightUpdate();
 
     game.physics.arcade.collide(player, movingPlatforms, setFriction, null, this);
     game.physics.arcade.collide(player, platforms, setFriction, null, this);
@@ -251,6 +295,7 @@ function update() {
 
     //  Checks to see if the player overlaps with any of the nutricomps, if he does call the collectnutricomp function
     game.physics.arcade.overlap(player, nutricomps, collectnutricomp, null, this);
+    game.physics.arcade.overlap(player, dangerBar, killPlayer, null, this);
 
     //  Reset the players velocity (movement)
     player.body.velocity.x = 0;
@@ -312,6 +357,8 @@ function update() {
     {
         player.body.velocity.y = -500;
         jumpTimer = game.time.time + 750;
+    }else if(cursors.down.isDown || stick.direction === Phaser.DOWN){
+        player.body.velocity.y = 400;
     }
 
     game.wasStanding = standing;
@@ -320,7 +367,7 @@ function update() {
 
 function playerMoveLeft(){
     //  Move to the left
-    player.body.velocity.x = -200;
+    player.body.velocity.x = -250;
     if (facing !== 'left')
     {
         facing = 'left';
@@ -330,7 +377,7 @@ function playerMoveLeft(){
 
 function playerMoveRight(){
     //  Move to the right
-    player.body.velocity.x = 200;
+    player.body.velocity.x = 250;
     if (facing !== 'right')
     {
         facing = 'right';
@@ -338,8 +385,12 @@ function playerMoveRight(){
     player.animations.play('right');
 }
 
-function playerJump(){
-
+function heightUpdate(){
+    if(player.body.y < topHeight){
+        topHeight = Math.floor(player.body.y);
+    }
+    heightScore.text = 'Altura maxima: ' + (game.world.height - topHeight - 150);
+    currentHeightText.text = 'Altura actual: ' + (Math.floor(game.world.height - player.body.y - 102));
 }
 
 function collectnutricomp (player, nutricomp) {
@@ -347,12 +398,15 @@ function collectnutricomp (player, nutricomp) {
     // Removes the nutricomp from the screen
     nutricomp.kill();
 
-    //movingPlatforms.setAll('body.velocity', 1000);
+    var heightValue, nutricompValue;
+    nutricompValue = 0;
+    heightValue = Math.floor(game.world.height - player.body.y - 102);
+    for(i = 0; i<heightValue; i+=500){
+        nutricompValue += 10;
+    }
 
-    //  Add and update the score
-    score += 10;
+    score += nutricompValue;
     scoreText.text = 'Puntuacion: ' + score;
-
 }
 
 function nutricompfloor (nutricomp, platform) {
@@ -360,6 +414,18 @@ function nutricompfloor (nutricomp, platform) {
     // Removes the nutricomp from the screen
     nutricomp.kill();
 
+}
+
+function killPlayer(){
+    player.kill();
+    gameOverText = game.add.text(180, 200, 'JUEGO TERMINADO\nPresione ESPACIO para reiniciar', { fontSize: '32px', fill: '#000', align: 'center' });
+    gameOverText.fixedToCamera = true;
+    dangerBar.body.velocity.y = 0;
+    gameOverBool = true;
+    if(score === undefined){maxScore = 0;}
+    if(score > maxScore){maxScore = score;}
+    maxScoreText.text = "Puntuacion maxima: " + maxScore
+    //game.state.restart();
 }
 
 function createNutriComp() {
