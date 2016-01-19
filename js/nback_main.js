@@ -14,6 +14,7 @@ var nutricomps;
 var dangerBar;
 var score = 0;
 var scoreText;
+var maxScore = 0;
 var maxScoreText;
 var heightScore;
 var currentHeightText;
@@ -27,7 +28,11 @@ var stick;
 var nBack_frames = 0;
 
 var facing = "right";
-var maxScore = 0;
+
+var nutriDeath;
+var playerDeath;
+var playerJump;
+var bgmTiger;
         
 nBack.game.state.add('Preload', nBack.Preload);
 nBack.game.state.add('MainMenu', nBack.MainMenu);

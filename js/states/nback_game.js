@@ -155,6 +155,13 @@ nBack.Game.prototype = {
         stick = pad.addDPad(0, 0, 200, 'dpad');
         stick.showOnTouch = true;
         //stick.alignBottomLeft(0);
+        
+        nutriDeath = this.game.add.audio('nutri-death');
+        playerDeath = this.game.add.audio('player-death');
+        playerJump = this.game.add.audio('player-jump');
+        bgmTiger = this.game.add.audio('bgm-tiger');
+        bgmTiger.loopFull(0.6);
+        this.game.sound.setDecodedCallback([ nutriDeath, playerDeath, playerJump ], this.update, this);
     },
     update: function() {
         movingPlatforms.forEach(this.wrapPlatform);
@@ -242,6 +249,7 @@ nBack.Game.prototype = {
         if ((standing || this.game.time.time <= this.game.edgeTimer) && (cursors.up.isDown || stick.direction === Phaser.UP) && this.game.time.time > jumpTimer)
         {
             player.body.velocity.y = -500;
+            playerJump.play();
             jumpTimer = this.game.time.time + 750;
         }else if(cursors.down.isDown || stick.direction === Phaser.DOWN){
             player.body.velocity.y = 400;
@@ -281,6 +289,7 @@ nBack.Game.prototype = {
         
         // Removes the nutricomp from the screen
         nutricomp.kill();
+        nutriDeath.play();
 
         var heightValue, nutricompValue;
         nutricompValue = 0;
@@ -301,6 +310,8 @@ nBack.Game.prototype = {
     },
 
     killPlayer: function(){
+        playerDeath.play();
+        bgmTiger.stop();
         player.kill();
         gameOverText = this.game.add.text(180, 200, 'JUEGO TERMINADO\nPresione ESPACIO para reiniciar', { fontSize: '32px', fill: '#000', align: 'center' });
         gameOverText.fixedToCamera = true;

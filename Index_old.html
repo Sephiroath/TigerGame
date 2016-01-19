@@ -1,0 +1,477 @@
+<!doctype html> 
+<html lang="en"> 
+<head> 
+	<meta charset="UTF-8" />
+    <title>Tiger Game Demo</title>
+	<script type="text/javascript" src="js/phaser.js"></script>
+    <script type="text/javascript" src="js/phaser-virtual-joystick.min.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<script type="text/javascript">
+
+var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { init: init, preload: preload, create: create, update: update, render: render });
+
+var facing = "right";
+var maxScore = 0;
+
+function init(){
+    game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+
+    game.scale.pageAlignHorizontally = true;
+    game.scale.pageAlignVertically = true;
+    
+}
+
+function preload() {
+
+    game.load.image('sky', 'assets/images/sky.png');
+    game.load.image('ground', 'assets/images/platform_1.png');
+    game.load.image('groundBackground', 'assets/images/ground-decoration.jpg');
+    game.load.image('skyBackground', 'assets/images/background-sky.png');
+    game.load.image('backgroundClouds', 'assets/images/background-clouds.png');
+    game.load.image('nutricomp-apple', 'assets/images/nutricomp-apple.png');
+    game.load.image('nutricomp-mix', 'assets/images/nutricomp-mix.png');
+    game.load.image('nutricomp-pear', 'assets/images/nutricomp-pear.png');
+    game.load.spritesheet('tiger', 'assets/images/tigerSS.png', 46, 39);
+    game.load.image('platform', 'assets/images/grass-platform.png');
+    game.load.image('ice-platform', 'assets/images/frost-platform.png');
+    game.load.image('nutricomp-logo', 'assets/images/nutribaby-logo.png');
+    game.load.image('softtek-logo', 'assets/images/softtek-logo.png');
+    game.load.image('danger-line', 'assets/images/danger-line.png');
+    //game.load.atlas('arcade', 'assets/virtualjoystick/skins/arcade-joystick.png', 'assets/virtualjoystick/skins/arcade-joystick.json');
+    game.load.atlas('dpad', 'assets/virtualjoystick/skins/dpad.png', 'assets/virtualjoystick/skins/dpad.json');
+
+}
+
+var player;
+var platforms;
+var movingPlatforms;
+var cursors;
+var wasStanding = false;
+var edgeTimer = 0;
+var jumpTimer = 0;
+
+var nutricomps;
+var dangerBar;
+var score = 0;
+var scoreText;
+var maxScoreText;
+var heightScore;
+var currentHeightText;
+var topHeight = 10000;
+var gameOverBool = false;
+
+var nutribabyLogo;
+var softtekLogo;
+var pad;
+var stick;
+
+function create() {
+
+    this.stage.backgroundColor = '#2f9acc';
+
+    this.spacebar = this.game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+
+    //  Activacion de fisicas Arcade
+    game.physics.startSystem(Phaser.Physics.ARCADE);
+
+    game.world.setBounds(0, 0, 800, 10000);
+
+    //  primer Fondo del juego
+    game.add.sprite(0, game.world.height-177, 'groundBackground');
+
+    //Fondo sucesivo del cielo
+    for (var i = 1; i <= 100; i++) {
+        game.add.sprite(0, game.world.height-177-(106*i), 'skyBackground');
+    };
+    for (var i = 1; i <= 3; i++) {
+        game.add.sprite(0, game.world.height-306-(1200*i), 'backgroundClouds');
+    };
+
+    //  Grupo de plataformas iniciales a las cuales se puede saltar
+    platforms = game.add.group();
+
+    //  activa Physics a los elementos del grupo platforms
+    platforms.enableBody = true;
+
+    //en esta linea se crea el piso donde inicia el personaje
+    var ground = platforms.create(0, game.world.height - 64, 'ground');
+
+    //  se escala el sprite para que ocupe la pantalla
+    ground.scale.setTo(2, 2);
+
+    //  no se permite el movimiengto cuando es tocado por el personaje
+    ground.body.immovable = true;
+
+    //  se crean 2 bordes
+    var ledge = platforms.create(400, game.world.height-200, 'ground');
+    ledge.body.immovable = true;
+
+    ledge = platforms.create(-150, game.world.height-350, 'ground');
+    ledge.body.immovable = true;
+
+    //creacion de plataformas con movimiento
+    movingPlatforms = game.add.physicsGroup();
+
+    var x = 0;
+    var y = 64;
+
+    for (var i = 0; i < 80; i++)
+    {
+        var type = i % 2 === 1 ? 'platform' : 'ice-platform';
+        var movingPlatform = movingPlatforms.create(x, y, type);
+
+        movingPlatform.scale.setTo(0.5, 0.5);
+
+        //  Set a random speed between 50 and 150
+        //movingPlatform.body.velocity.x = game.rnd.integerInRange(50, 150);
+        //  Increase Speed gradually
+        movingPlatform.body.velocity.x = game.rnd.integerInRange(900, 1050) - (10 * i)
+
+        //  Inverse it?
+        if (Math.random() > 0.5)
+        {
+            movingPlatform.body.velocity.x *= -1;
+        }
+
+        x += 200;
+
+        if (x >= 600)
+        {
+            x = 0;
+        }
+
+        y+= 120;
+    }
+
+    movingPlatforms.setAll('body.allowGravity', false);
+    movingPlatforms.setAll('body.immovable', true);
+
+    // se agrega el jugador y su posicion incial
+    player = game.add.sprite(32, game.world.height - 150, 'tiger');
+
+    //  se le agregan fisicas al personaje principial
+    game.physics.arcade.enable(player);
+
+    //  se le da un pequeño rebote al personaje cuando toque el piso y se le activa la colision con los objetos
+    player.body.bounce.y = 0.2;
+    player.body.gravity.y = 300;
+    player.body.collideWorldBounds = true;
+
+    //  Animaciones de caminar izq y der
+    player.animations.add('left', [ 43, 42, 41, 40, 39, 38, 37 ,36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22], 20, true);
+    player.animations.add('right', [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], 20, true);
+
+    //  Finally some nutricomps to collect
+    nutricomps = game.add.group();
+
+    //  We will enable physics for any nutricomp that is created in this group
+    nutricomps.enableBody = true;
+
+    //loop de Generacion de nutricomp
+    //game.time.events.repeat(Phaser.Timer.SECOND * 1, 10, createNutriComp, this);
+    game.time.events.loop(Phaser.Timer.SECOND*5, createNutriComp, this);
+
+    //Danger line: se añade linea que al pasarla mata al player
+    dangerBar = game.add.sprite(0, game.world.height, 'danger-line');
+    game.physics.arcade.enable(dangerBar);
+    dangerBar.body.velocity.y = -15;
+    dangerBar.body.allowGravity = false;
+    dangerBar.body.immovable = true;
+    game.time.events.loop(Phaser.Timer.SECOND*1, increaseDangerBarVelocity, this);;
+    
+    //Nutricomp Logo
+    nutribabyLogo = game.add.sprite(800-200, 600-64, 'nutricomp-logo');
+    //nutribabyLogo.scale.setTo(0.5,0.5);
+    nutribabyLogo.fixedToCamera = true;
+
+    //Softtek Logo
+    softtekLogo = game.add.sprite(0, 600-64, 'softtek-logo');
+    //softtekLogo.scale.setTo(0.5,0.5);
+    softtekLogo.fixedToCamera = true;
+
+    //  The score
+    scoreText = game.add.text(16, 16, 'Puntuacion: 0', { fontSize: '16px', fill: '#000' });
+    scoreText.fixedToCamera = true;
+
+    //Maximum Score
+    maxScoreText = game.add.text(16, 32, 'Puntuacion maxima: ' + maxScore, { fontSize: '16px', fill: '#000' });
+    maxScoreText.fixedToCamera = true;
+    
+    //current Height 
+    currentHeightText = game.add.text(16, 48, 'Altura actual: 0', { fontSize: '16px', fill: '#000' });
+    currentHeightText.fixedToCamera = true;
+
+    //Maximum Height
+    heightScore = game.add.text(16, 64, 'Altura maxima: 0', { fontSize: '16px', fill: '#000' });
+    heightScore.fixedToCamera = true;
+
+    //Follow¨Player
+    game.camera.follow(player);
+
+    //  Our controls.
+    cursors = game.input.keyboard.createCursorKeys();
+    // Joystick Controls
+    pad = game.plugins.add(Phaser.VirtualJoystick);
+
+    //stick = pad.addStick(0, 0, 200, 'arcade');
+    //stick.showOnTouch = true;
+    stick = pad.addDPad(0, 0, 200, 'dpad');
+    stick.showOnTouch = true;
+    //stick.alignBottomLeft(0);
+    
+}
+
+function increaseDangerBarVelocity(){
+    if(!gameOverBool){
+        dangerBar.body.velocity.y -= 2;
+    }
+}
+
+function wrapPlatform(movingPlatform) {
+
+    if (movingPlatform.body.velocity.x < 0 && movingPlatform.x <= -200)
+    {
+        movingPlatform.x = 800;
+    }
+    else if (movingPlatform.body.velocity.x > 0 && movingPlatform.x >= 800)
+    {
+        movingPlatform.x = -200;
+    }
+
+}
+
+function killOffscreenNutricomps(nutricomp) {
+    console.log("Killed Nutricomp");
+    if (nutricomp.body.velocity.x < 0 && nutricomp.x <= -200)
+    {
+        nutricomp.kill();
+    }
+    else if (nutricomp.body.velocity.x > 0 && nutricomp.x >= 800)
+    {
+        nutricomp.kill();
+    }
+
+}
+
+function setFriction(player, movingPlatform) {
+
+    if (movingPlatform.key === 'ice-platform')
+    {
+        player.body.x -= movingPlatform.body.x - movingPlatform.body.prev.x;
+    }
+
+}
+
+function update() {
+
+    movingPlatforms.forEach(wrapPlatform);
+    if (this.spacebar.isDown && gameOverBool){
+        gameOverBool = false;
+        game.state.restart();
+    }      
+    // performance decrease
+    //nutricomps.forEach(killOffscreenNutricomps);
+    
+    //Height Score
+    heightUpdate();
+
+    game.physics.arcade.collide(player, movingPlatforms, setFriction, null, this);
+    game.physics.arcade.collide(player, platforms, setFriction, null, this);
+
+    //  Do this AFTER the collide check, or we won't have blocked/touching set
+    var standing = player.body.blocked.down || player.body.touching.down;
+
+    //  Collide the player and the nutricomps with the platforms
+    game.physics.arcade.collide(player, platforms);
+    game.physics.arcade.collide(nutricomps, movingPlatforms);
+    game.physics.arcade.collide(nutricomps, platforms, nutricompfloor);
+
+    //  Checks to see if the player overlaps with any of the nutricomps, if he does call the collectnutricomp function
+    game.physics.arcade.overlap(player, nutricomps, collectnutricomp, null, this);
+    game.physics.arcade.overlap(player, dangerBar, killPlayer, null, this);
+
+    //  Reset the players velocity (movement)
+    player.body.velocity.x = 0;
+    if(cursors.left.isDown || cursors.right.isDown || stick.isDown){ 
+        if (cursors.left.isDown || stick.direction === Phaser.LEFT)
+        {
+            playerMoveLeft();
+        }
+        else if (cursors.right.isDown || stick.direction === Phaser.RIGHT)
+        {
+            playerMoveRight();
+        }
+        else
+        {
+            //  Stand still
+            player.frame = 0;
+
+            if (facing === 'right')
+            {
+                player.frame = 0;
+            }
+            else
+            {
+                player.frame = 43;
+            }
+        }
+    }
+    else
+    {
+        //  Stand still
+        player.frame = 0;
+
+        if (facing === 'right')
+        {
+            player.frame = 0;
+        }
+        else
+        {
+            player.frame = 43;
+        }
+    }
+    
+    //  Allow the player to jump if they are touching the ground.
+    //if (cursors.up.isDown && player.body.touching.down)
+    //{
+    //    player.body.velocity.y = -350;
+    //}
+    //
+    //  Change on jump movement:
+    //  No longer standing on the edge, but were
+    //  Give them a 250ms grace period to jump after falling
+    if (!standing && game.wasStanding)
+    {
+        game.edgeTimer = game.time.time + 250;
+    }
+
+    //  Allowed to jump?
+    if ((standing || game.time.time <= game.edgeTimer) && (cursors.up.isDown || stick.direction === Phaser.UP) && game.time.time > jumpTimer)
+    {
+        player.body.velocity.y = -500;
+        jumpTimer = game.time.time + 750;
+    }else if(cursors.down.isDown || stick.direction === Phaser.DOWN){
+        player.body.velocity.y = 400;
+    }
+
+    game.wasStanding = standing;
+
+}
+
+function playerMoveLeft(){
+    //  Move to the left
+    player.body.velocity.x = -250;
+    if (facing !== 'left')
+    {
+        facing = 'left';
+    }
+    player.animations.play('left');
+}
+
+function playerMoveRight(){
+    //  Move to the right
+    player.body.velocity.x = 250;
+    if (facing !== 'right')
+    {
+        facing = 'right';
+    }
+    player.animations.play('right');
+}
+
+function heightUpdate(){
+    if(player.body.y < topHeight){
+        topHeight = Math.floor(player.body.y);
+    }
+    heightScore.text = 'Altura maxima: ' + (game.world.height - topHeight - 150);
+    currentHeightText.text = 'Altura actual: ' + (Math.floor(game.world.height - player.body.y - 102));
+}
+
+function collectnutricomp (player, nutricomp) {
+    
+    // Removes the nutricomp from the screen
+    nutricomp.kill();
+
+    var heightValue, nutricompValue;
+    nutricompValue = 0;
+    heightValue = Math.floor(game.world.height - player.body.y - 102);
+    for(i = 0; i<heightValue; i+=500){
+        nutricompValue += 10;
+    }
+
+    score += nutricompValue;
+    scoreText.text = 'Puntuacion: ' + score;
+}
+
+function nutricompfloor (nutricomp, platform) {
+    
+    // Removes the nutricomp from the screen
+    nutricomp.kill();
+
+}
+
+function killPlayer(){
+    player.kill();
+    gameOverText = game.add.text(180, 200, 'JUEGO TERMINADO\nPresione ESPACIO para reiniciar', { fontSize: '32px', fill: '#000', align: 'center' });
+    gameOverText.fixedToCamera = true;
+    dangerBar.body.velocity.y = 0;
+    gameOverBool = true;
+    if(score === undefined){maxScore = 0;}
+    if(score > maxScore){maxScore = score;}
+    score = 0;
+    maxScoreText.text = "Puntuacion maxima: " + maxScore
+    //game.state.restart();
+}
+
+function createNutriComp() {
+
+    //  Here we'll create 12 of them evenly spaced apart
+    for (var i = 0; i < 4; i++)
+    {
+        //  Create a random nutricomp inside of the 'nutricomps' group
+        var nutricompType = Math.floor(Math.random() * (3) + 1);
+        var nutricomp;
+        switch(nutricompType){
+            case 1:
+                nutricomp = nutricomps.create(game.world.randomX, player.body.y-700, 'nutricomp-apple');
+                break;
+            case 2:
+                nutricomp = nutricomps.create(game.world.randomX, player.body.y-700, 'nutricomp-mix');
+                break;
+            case 3:
+                nutricomp = nutricomps.create(game.world.randomX, player.body.y-700, 'nutricomp-pear');
+                break;
+            default: 
+                nutricomp = nutricomps.create(game.world.randomX, player.body.y-700, 'nutricomp-pear');
+                break;
+        }
+        
+
+        //  Let gravity do its thing
+        nutricomp.body.gravity.y = 50;
+        nutricomp.body.collideWorldBounds = true;
+        nutricomp.lifespan=10000;
+
+        //  This just gives each nutricomp a slightly random bounce value
+        nutricomp.body.bounce.y = 0.7 + Math.random() * 0.2;
+    }
+
+}
+
+function render() {
+
+    //game.debug.cameraInfo(game.camera, 32, 32);
+    //game.debug.spriteCoords(player, 32, 500);
+
+}
+
+</script>
+
+</body>
+</html>

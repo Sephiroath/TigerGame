@@ -34,6 +34,12 @@ nBack.Preload.prototype = {
         this.load.image('button-play',    'assets/images/button-play.png');
         this.load.image('loading',  'assets/images/load-bar.png');
         this.load.image('nutribaby-logo',    'assets/images/splashscreen.png');
+
+        //Audio Assets
+        this.load.audio('nutri-death','assets/audio/death_nutri.wav');
+        this.load.audio('player-death','assets/audio/death_player.wav');
+        this.load.audio('player-jump','assets/audio/jump_player.wav');
+        this.load.audio('bgm-tiger','assets/audio/bgm_tiger.wav');
     },
     create: function() {
         this.state.start('MainMenu');
